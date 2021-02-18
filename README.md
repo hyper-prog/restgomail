@@ -28,6 +28,7 @@ SMTP host and port, the authentications, allowed client certificates and so on..
                 "clientOneContainer": "@one_client.crt",
                 "clientTwoContainer": "MIdjr6RfjfuESwekjEDffg..."
             },
+            "waitSecondsAfterSmtpReq": 10,
             "debugMode": false
         }
     }
