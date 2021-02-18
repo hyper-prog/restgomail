@@ -8,9 +8,10 @@ as HTTP POST in a JSON data, queue the requests, and sends the specified
 mails to a SMTP server according to the settings.
 
 
-Compile / Install
------------------
-Server config file (JSON) - Have to pass in command line argument
+Config file sample (JSON) 
+-------------------------
+You need to give a JSON file as a command line argument to specify
+SMTP host and port, the authentications, allowed client certificates and so on...
 
     {
         "restgomail": {
@@ -31,7 +32,9 @@ Server config file (JSON) - Have to pass in command line argument
         }
     }
 
-E-mail send request (JSON) - Have to send as POST request to the 443 port (configured above)
+E-mail send request sample (JSON)
+---------------------------------
+This is a sample JSON passed as HTTP-POST request to the 443 port (configured above)
 
     {
         "sendmail": {
