@@ -1,0 +1,17 @@
+{
+  "restgomail": {
+    "smtpHost": "smtp.gmail.com",
+    "smtpPort": "587",
+    "smtpAuthRequired": true,
+    "smtpAuthPassword": "gmailpasswordsample",
+    "smtpAllowedFromAddressOnly": "sampleuser@gmail.com",
+    "httpsListenPort": "44325",
+    "tlsKeyFile": "restgomail.key",
+    "tlsCertFile": "restgomail.crt",
+    "allowOnlyKnownCertificates": true,
+    "knownCertificates": {
+       "civisdbContainer": "@rgmclient.crt"
+    },
+    "waitSecondsAfterSmtpreq": 10
+  }
+}

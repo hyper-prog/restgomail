@@ -1,0 +1,8 @@
+services:
+  restgomail:
+    image: hyperprog/restgomail
+    container_name: restgomail
+    ports:
+      - "44325:44325"
+    volumes:
+      - ./data:/restgomail
