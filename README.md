@@ -7,6 +7,18 @@ RestGoMail is a small daemon/container which able to receive HTML e-mail forward
 as HTTP POST in a JSON data, queue the requests, and sends the specified
 mails to a SMTP server according to the settings.
 
+Docker images
+-------------
+Available a docker container with a compiled restgomail daemon:
+ Docker hub:
+
+- https://hub.docker.com/r/hyperprog/restgomail
+
+ Downloadable (pullable) image name:
+ 
+    hyperprog/restgomail
+
+Check the docker-compose.yml file under the EXAMPLES directory to learn how to configure it.
 
 Config file sample (JSON) 
 -------------------------
