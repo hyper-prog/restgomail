@@ -58,3 +58,16 @@ This is a sample JSON passed as HTTP-POST request to the 443 port (configured ab
         }
     }
 
+You can encode subject and bodyhtml in base64 if the data contains special characters
+
+    {
+        "sendmail": {
+            "from": "sampleuser@gmail.com",
+            "to": "tomyfriend@postmail.com",
+            "subject": "VGVzdCBmcm9tIFBIUA==",
+            "subjectEncoding": "base64",
+            "bodyhtml": "VGhpcyBpcyByZWNlaXZlZCB0aHJvdWdoIDxoMT5SZXN0R29NYWlsPC9oMT4=",
+            "bodyhtmlEncoding": "base64"
+        }
+    }
+

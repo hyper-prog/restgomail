@@ -274,6 +274,8 @@ func processRequest(req *[]byte, remote string) bool {
 	to, toType := jsonmsg.getStringByPath("sendmail/to")
 	subject, subjectType := jsonmsg.getStringByPath("sendmail/subject")
 	bodyhtml, bodyhtmlType := jsonmsg.getStringByPath("sendmail/bodyhtml")
+	subjectEnc := jsonmsg.getStringByPathWithDefault("sendmail/subjectEncoding", "none")
+	bodyhtmlEnc := jsonmsg.getStringByPathWithDefault("sendmail/bodyhtmlEncoding", "none")
 
 	if fromType == "none" || toType == "none" ||
 		subjectType == "none" || bodyhtmlType == "none" {
@@ -285,6 +287,22 @@ func processRequest(req *[]byte, remote string) bool {
 			log.Println(" bodyhtml...", bodyhtmlType)
 		}
 		return true
+	}
+	if subjectEnc == "base64" {
+		dec, err := base64.StdEncoding.DecodeString(subject)
+		if err != nil {
+			log.Printf("Error (%s) base64 decoding error (1)\n", remote)
+			return true
+		}
+		subject = string(dec)
+	}
+	if bodyhtmlEnc == "base64" {
+		dec, err := base64.StdEncoding.DecodeString(bodyhtml)
+		if err != nil {
+			log.Printf("Error (%s) base64 decoding error (2)\n", remote)
+			return true
+		}
+		bodyhtml = string(dec)
 	}
 
 	log.Printf("Received send mail request from %s\n", remote)
