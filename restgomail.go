@@ -9,7 +9,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -123,17 +122,15 @@ func readConfig(jsonfile string) bool {
 		return true
 	}
 
-	var confJSONParsed map[string]interface{}
-	confJSONError := json.Unmarshal(confJSONData, &confJSONParsed)
+	configJSON, confJSONError := parseSmartJSON(confJSONData)
 	if confJSONError != nil {
 		log.Printf("Error, configuration file has not valid JSON: %s\n", confJSONError.Error())
 		return true
 	}
-
 	for confName, configItemVal := range config {
 		switch configItemVal.vtype {
 		case "string":
-			sv, svt := getStringByPath(confJSONParsed, "restgomail/"+confName)
+			sv, svt := configJSON.getStringByPath("restgomail/" + confName)
 			if configItemVal.required && svt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -144,7 +141,7 @@ func readConfig(jsonfile string) bool {
 				config[confName].sval = sv
 			}
 		case "float":
-			fv, fvt := getFloat64ByPath(confJSONParsed, "restgomail/"+confName)
+			fv, fvt := configJSON.getFloat64ByPath("restgomail/" + confName)
 			if configItemVal.required && fvt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -155,7 +152,7 @@ func readConfig(jsonfile string) bool {
 				config[confName].fval = fv
 			}
 		case "bool":
-			bv, bvt := getBoolByPath(confJSONParsed, "restgomail/"+confName)
+			bv, bvt := configJSON.getBoolByPath("restgomail/" + confName)
 			if configItemVal.required && bvt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -173,7 +170,7 @@ func readConfig(jsonfile string) bool {
 	}
 
 	loadedCertsCounts := 0
-	cm, cmt := getMapByPath(confJSONParsed, "restgomail/knownCertificates")
+	cm, cmt := configJSON.getMapByPath("restgomail/knownCertificates")
 	if cmt == "map" {
 		for name, value := range cm {
 			if certstr, isStr := value.(string); isStr {
@@ -255,30 +252,28 @@ func main() {
 }
 
 func processRequest(req *[]byte, remote string) bool {
-	var parsed map[string]interface{}
-
 	if getConfigBool("debugMode") {
 		log.Println("******* BEGIN Request data ************")
 		log.Println(string(*req))
 		log.Println("******* END Request data **************")
 	}
-	error := json.Unmarshal(*req, &parsed)
-	if error != nil {
-		log.Printf("Error (%s) Not valid JSON: %s\n", remote, error.Error())
+	jsonmsg, jSerror := parseSmartJSON(*req)
+	if jSerror != nil {
+		log.Printf("Error (%s) Not valid JSON: %s\n", remote, jSerror.Error())
 		return true
 	}
 
 	if getConfigBool("debugMode") {
 		log.Println("JSON from client: ", remote)
 		log.Println("------- BEGIN Parsed JSON -------------")
-		log.Println(printParsedJSON(parsed))
+		log.Println(jsonmsg.toFormattedString())
 		log.Println("------- END Parsed JSON ---------------")
 	}
 
-	from, fromType := getStringByPath(parsed, "sendmail/from")
-	to, toType := getStringByPath(parsed, "sendmail/to")
-	subject, subjectType := getStringByPath(parsed, "sendmail/subject")
-	bodyhtml, bodyhtmlType := getStringByPath(parsed, "sendmail/bodyhtml")
+	from, fromType := jsonmsg.getStringByPath("sendmail/from")
+	to, toType := jsonmsg.getStringByPath("sendmail/to")
+	subject, subjectType := jsonmsg.getStringByPath("sendmail/subject")
+	bodyhtml, bodyhtmlType := jsonmsg.getStringByPath("sendmail/bodyhtml")
 
 	if fromType == "none" || toType == "none" ||
 		subjectType == "none" || bodyhtmlType == "none" {

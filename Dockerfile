@@ -4,8 +4,8 @@
 
 FROM golang AS restgomailbuildstage
 RUN mkdir /restgomail
-COPY restgomail.go jsondive.go /restgomail/
-RUN cd /restgomail && CGO_ENABLED=0 GOOS=linux go build -a -o restgomail restgomail.go jsondive.go
+COPY restgomail.go smartjson.go /restgomail/
+RUN cd /restgomail && CGO_ENABLED=0 GOOS=linux go build -a -o restgomail restgomail.go smartjson.go
 
 FROM debian AS restgomail
 LABEL maintainer="hyper80@gmail.com" Description="RestGoMail - HTTPS REST-Go-MAIL (SMTP) gateway"
