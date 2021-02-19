@@ -7,11 +7,11 @@ CLIENTCERTNAME="rgmclient"
 
 openssl genrsa -out ${SERVERCERTNAME}.key 2048
 openssl ecparam -genkey -name secp384r1 -out ${SERVERCERTNAME}.key
-openssl req -new -x509 -sha256 -key ${SERVERCERTNAME}.key -out ${SERVERCERTNAME}.crt -days 365
+openssl req -new -x509 -sha256 -key ${SERVERCERTNAME}.key -out ${SERVERCERTNAME}.crt -days 365 -subj '/CN=restgomail/O=localtest/C=US'
 
 openssl genrsa -out ${CLIENTCERTNAME}.key 2048
 openssl ecparam -genkey -name secp384r1 -out ${CLIENTCERTNAME}.key
-openssl req -new -x509 -sha256 -key ${CLIENTCERTNAME}.key -out ${CLIENTCERTNAME}.crt -days 365
+openssl req -new -x509 -sha256 -key ${CLIENTCERTNAME}.key -out ${CLIENTCERTNAME}.crt -days 365 -subj '/CN=testclient/O=localtest/C=US'
 
 mv ${SERVERCERTNAME}.key ./data/
 mv ${SERVERCERTNAME}.crt ./data/
