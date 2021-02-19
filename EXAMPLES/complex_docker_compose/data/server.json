@@ -10,7 +10,7 @@
     "tlsCertFile": "restgomail.crt",
     "allowOnlyKnownCertificates": true,
     "knownCertificates": {
-       "civisdbContainer": "@rgmclient.crt"
+       "namedclient": "@rgmclient.crt"
     },
     "waitSecondsAfterSmtpreq": 10
   }
