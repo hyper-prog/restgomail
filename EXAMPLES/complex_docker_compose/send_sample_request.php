@@ -37,7 +37,7 @@ function SendHttpPostWithCert($url, $postdata, $certfile, $keyfile)
     $result = curl_exec($curl);
     $info = curl_getinfo($curl,CURLINFO_CERTINFO);
 
-    print "You can check this certificate:"
+    print "You can check this certificate:";
     print "\n=============================\n";
     $c = $info[0]['Cert'];
     $c = preg_replace('/\-+BEGIN CERTIFICATE\-+/','',$c);
