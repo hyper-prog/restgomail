@@ -67,9 +67,9 @@ func handleHTTPMailReq(w http.ResponseWriter, r *http.Request) {
 		status = processRequest(&body, r.RemoteAddr)
 	}
 
-	message := "{status: \"Received\"}"
+	message := "{\"status\": \"Received\"}"
 	if status {
-		message = "{status: \"Failed\"}"
+		message = "{\"status\": \"Failed\"}"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
