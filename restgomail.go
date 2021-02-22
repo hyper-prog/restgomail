@@ -59,21 +59,31 @@ func handleHTTPMailReq(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var status bool = true
+	processingResult := 3
 	if body, rdBodyErr := ioutil.ReadAll(r.Body); rdBodyErr != nil {
 		log.Printf("Error (%s): %s\n", r.RemoteAddr, rdBodyErr.Error())
 	} else {
-		status = processRequest(&body, r.RemoteAddr)
+		processingResult = processRequest(&body, r.RemoteAddr)
 	}
 
-	message := "{\"status\": \"Received\"}"
-	if status {
-		message = "{\"status\": \"Failed\"}"
+	answer := ""
+	switch processingResult {
+		case 0: // Ok, Received
+			answer = "{\"status\": \"Received\"}"
+		case 1: // Error
+			answer = "{\"status\": \"Failed\"}"
+		case 2: // Status check
+			answer = "{\"status\": \"yesalive\"}"
+		case 3: //No result
+		fallthrough
+		default:
+			answer = "{\"status\": \"Error\"}"
+			log.Printf("Error (%s): %s\n", r.RemoteAddr,"processing error")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("charset", "utf-8")
-	w.Write([]byte(message))
+	w.Write([]byte(answer))
 }
 
 func checkClientCert(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
@@ -251,7 +261,7 @@ func main() {
 	}
 }
 
-func processRequest(req *[]byte, remote string) bool {
+func processRequest(req *[]byte, remote string) int {
 	if getConfigBool("debugMode") {
 		log.Println("******* BEGIN Request data ************")
 		log.Println(string(*req))
@@ -260,7 +270,7 @@ func processRequest(req *[]byte, remote string) bool {
 	jsonmsg, jSerror := parseSmartJSON(*req)
 	if jSerror != nil {
 		log.Printf("Error (%s) Not valid JSON: %s\n", remote, jSerror.Error())
-		return true
+		return 1
 	}
 
 	if getConfigBool("debugMode") {
@@ -268,6 +278,11 @@ func processRequest(req *[]byte, remote string) bool {
 		log.Println("------- BEGIN Parsed JSON -------------")
 		log.Println(jsonmsg.toFormattedString())
 		log.Println("------- END Parsed JSON ---------------")
+	}
+
+	statuscheck,scType := jsonmsg.getStringByPath("statuscheck")
+	if scType != "none" && statuscheck == "isitalive" {
+		return 2
 	}
 
 	from, fromType := jsonmsg.getStringByPath("sendmail/from")
@@ -286,13 +301,13 @@ func processRequest(req *[]byte, remote string) bool {
 			log.Println(" subject...", subjectType)
 			log.Println(" bodyhtml...", bodyhtmlType)
 		}
-		return true
+		return 1
 	}
 	if subjectEnc == "base64" {
 		dec, err := base64.StdEncoding.DecodeString(subject)
 		if err != nil {
 			log.Printf("Error (%s) base64 decoding error (1)\n", remote)
-			return true
+			return 1
 		}
 		subject = string(dec)
 	}
@@ -300,7 +315,7 @@ func processRequest(req *[]byte, remote string) bool {
 		dec, err := base64.StdEncoding.DecodeString(bodyhtml)
 		if err != nil {
 			log.Printf("Error (%s) base64 decoding error (2)\n", remote)
-			return true
+			return 1
 		}
 		bodyhtml = string(dec)
 	}
@@ -309,10 +324,10 @@ func processRequest(req *[]byte, remote string) bool {
 	allowedSnAddr := getConfigString("smtpAllowedFromAddressOnly")
 	if allowedSnAddr != "" && allowedSnAddr != from {
 		log.Printf("Error (%s) not allowed sender address\n", remote)
-		return true
+		return 1
 	}
 	senderChannel <- mailDataType{from, to, subject, bodyhtml}
-	return false
+	return 0
 }
 
 func senderAgent(recvChannel <-chan mailDataType) {
