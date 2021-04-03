@@ -1,6 +1,6 @@
 package main
 
-/*  Smart JSON functions - Helper functions to handle JSON
+/*  Smart JSON functions - Helper functions to query JSON
     (C) 2021 Péter Deák (hyper80@gmail.com)
     License: GPLv2
 */
@@ -8,81 +8,148 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
 type SmartJSON struct {
-	parsed map[string]interface{}
+	parsed interface{}
 }
 
 func parseSmartJSON(rawdata []byte) (SmartJSON, error) {
 	s := SmartJSON{}
-	s.parsed = make(map[string]interface{})
 	err := json.Unmarshal(rawdata, &s.parsed)
 	return s, err
 }
 
 func (sJSON SmartJSON) toFormattedString() (out string) {
-	return "JSON => {\n" + jsonNodeToString(sJSON.parsed, "    ") + "}\n"
+	return jsonNodeToString(sJSON.parsed, "") + "\n"
 }
 
-func jsonNodeToString(n map[string]interface{}, indent string) (out string) {
-	out = ""
-	for n, v := range n {
-		out += indent + n + " => "
-		if str, isStr := v.(string); isStr {
-			out += str + "\n"
-			continue
-		}
-		if flt, isFlt := v.(float64); isFlt {
-			out += fmt.Sprintf("%f\n", flt)
-			continue
-		}
-		if b, isB := v.(bool); isB {
-			if b {
-				out += "true\n"
-			} else {
-				out += "false\n"
-			}
-			continue
-		}
+func (sJSON SmartJSON) toPrettify() (out string) {
+	return jsonNodeToString(sJSON.parsed, "") + "\n"
+}
 
-		m, okm := v.(map[string]interface{})
-		if okm {
-			out += "{\n"
-			out += jsonNodeToString(m, indent+"    ")
-			out += indent + "}\n"
-			continue
+func jsonNodeToString(v interface{}, indent string) (out string) {
+	out = ""
+	if m, isMap := v.(map[string]interface{}); isMap {
+		out += "{\n" + indent + "  "
+		c := 0
+		for n, v := range m {
+			sep := ""
+			if c > 0 {
+				sep = ",\n  " + indent
+			}
+			out += sep + "\"" + n + "\":" + jsonNodeToString(v, indent + "  ")
+			c++
 		}
-		out += "?\n"
+		out += "\n" + indent + "}"
+		return out
 	}
-	return
+	if arr, isArray := v.([]interface{}); isArray {
+		out += "[\n" + indent + "  "
+		l := len(arr)
+		for i := 0; i < l; i++ {
+			sep := ""
+			if i > 0 {
+				sep = ",\n  " + indent
+			}
+			out += sep + jsonNodeToString(arr[i], indent + "  ")
+		}
+		out += "\n" + indent + "]"
+		return out
+	}
+	if str, isStr := v.(string); isStr {
+		out += "\"" + str + "\""
+		return out
+	}
+	if flt, isFlt := v.(float64); isFlt {
+		out += fmt.Sprintf("%f", flt)
+		return out
+	}
+	if b, isB := v.(bool); isB {
+		if b {
+			out += "true"
+		} else {
+			out += "false"
+		}
+		return out
+	}
+	if v == nil {
+		out += "null"
+		return out
+	}
+	return "" //should not happend
+}
+
+func pathEvalNode(last interface{}) (interface{}, string) {
+	if str, isStr := last.(string); isStr {
+		return str, "string"
+	}
+	if flt, isFlt := last.(float64); isFlt {
+		return flt, "float64"
+	}
+	if bo, isBool := last.(bool); isBool {
+		return bo, "bool"
+	}
+	if mp, isMap := last.(map[string]interface{}); isMap {
+		return mp, "map"
+	}
+	if ar, isArr := last.([]interface{}); isArr {
+		return ar, "array"
+	}
+	if last == nil {
+		return nil, "null"
+	}
+	return nil, "none"
 }
 
 func (sJSON SmartJSON) getValueByPath(path string) (interface{}, string) {
 	parts := strings.Split(path, "/")
 	n := sJSON.parsed
 	for i := 0; i < len(parts); i++ {
-		v, ok := n[parts[i]]
-		if !ok {
-			return nil, "none"
+		if map_node, isMap_node := n.(map[string]interface{}); isMap_node {
+			map_node_value, ok := map_node[parts[i]]
+			if !ok {
+				return nil, "none"
+			}
+			if i == len(parts)-1 {
+				return pathEvalNode(map_node_value)
+			}
+			n = map_node_value
+			continue
 		}
-		if i == len(parts)-1 {
-			if s, isStr := v.(string); isStr {
-				return s, "string"
+		if arr_node, isArr_node := n.([]interface{}); isArr_node {
+			if len(arr_node) == 0 {
+				return nil, "none"
 			}
-			if f, isFlt := v.(float64); isFlt {
-				return f, "float64"
+			var arr_node_item interface{}
+			if parts[i] == "[]" {
+				arr_node_item = arr_node[0]
+			} else {
+				r, rxerr := regexp.Compile(`^\[([0-9]+)\]$`)
+				if rxerr != nil {
+					return nil, "none"
+				}
+				matches := r.FindStringSubmatch(parts[i])
+				if len(matches) != 2 {
+					return nil, "none"
+				}
+				index, erratoi := strconv.Atoi(matches[1])
+				if erratoi != nil {
+					return nil, "none"
+				}
+				if index >= len(arr_node) {
+					return nil, "none"
+				}
+				arr_node_item = arr_node[index]
 			}
-			if b, isBool := v.(bool); isBool {
-				return b, "bool"
+
+			if i == len(parts)-1 {
+				return pathEvalNode(arr_node_item)
 			}
-			if m, isMap := v.(map[string]interface{}); isMap {
-				return m, "map"
-			}
-		}
-		if m, isMap := v.(map[string]interface{}); isMap {
-			n = m
+			n = arr_node_item
 			continue
 		}
 		return nil, "none"
