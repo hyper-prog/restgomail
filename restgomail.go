@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hyper-prog/smartjson"
 )
 
 type configItemType struct {
@@ -68,17 +70,17 @@ func handleHTTPMailReq(w http.ResponseWriter, r *http.Request) {
 
 	answer := ""
 	switch processingResult {
-		case 0: // Ok, Received
-			answer = "{\"status\": \"Received\"}"
-		case 1: // Error
-			answer = "{\"status\": \"Failed\"}"
-		case 2: // Status check
-			answer = "{\"status\": \"yesalive\"}"
-		case 3: //No result
+	case 0: // Ok, Received
+		answer = "{\"status\": \"Received\"}"
+	case 1: // Error
+		answer = "{\"status\": \"Failed\"}"
+	case 2: // Status check
+		answer = "{\"status\": \"yesalive\"}"
+	case 3: //No result
 		fallthrough
-		default:
-			answer = "{\"status\": \"Error\"}"
-			log.Printf("Error (%s): %s\n", r.RemoteAddr,"processing error")
+	default:
+		answer = "{\"status\": \"Error\"}"
+		log.Printf("Error (%s): %s\n", r.RemoteAddr, "processing error")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -132,7 +134,7 @@ func readConfig(jsonfile string) bool {
 		return true
 	}
 
-	configJSON, confJSONError := parseSmartJSON(confJSONData)
+	configJSON, confJSONError := smartjson.ParseJSON(confJSONData)
 	if confJSONError != nil {
 		log.Printf("Error, configuration file has not valid JSON: %s\n", confJSONError.Error())
 		return true
@@ -140,7 +142,7 @@ func readConfig(jsonfile string) bool {
 	for confName, configItemVal := range config {
 		switch configItemVal.vtype {
 		case "string":
-			sv, svt := configJSON.getStringByPath("restgomail/" + confName)
+			sv, svt := configJSON.GetStringByPath("/restgomail/" + confName)
 			if configItemVal.required && svt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -151,7 +153,7 @@ func readConfig(jsonfile string) bool {
 				config[confName].sval = sv
 			}
 		case "float":
-			fv, fvt := configJSON.getFloat64ByPath("restgomail/" + confName)
+			fv, fvt := configJSON.GetFloat64ByPath("/restgomail/" + confName)
 			if configItemVal.required && fvt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -162,7 +164,7 @@ func readConfig(jsonfile string) bool {
 				config[confName].fval = fv
 			}
 		case "bool":
-			bv, bvt := configJSON.getBoolByPath("restgomail/" + confName)
+			bv, bvt := configJSON.GetBoolByPath("/restgomail/" + confName)
 			if configItemVal.required && bvt == "none" {
 				log.Printf("Error, incomplete config JSON, \"%s\" missing", confName)
 				return true
@@ -180,7 +182,7 @@ func readConfig(jsonfile string) bool {
 	}
 
 	loadedCertsCounts := 0
-	cm, cmt := configJSON.getMapByPath("restgomail/knownCertificates")
+	cm, cmt := configJSON.GetMapByPath("/restgomail/knownCertificates")
 	if cmt == "map" {
 		for name, value := range cm {
 			if certstr, isStr := value.(string); isStr {
@@ -267,7 +269,7 @@ func processRequest(req *[]byte, remote string) int {
 		log.Println(string(*req))
 		log.Println("******* END Request data **************")
 	}
-	jsonmsg, jSerror := parseSmartJSON(*req)
+	jsonmsg, jSerror := smartjson.ParseJSON(*req)
 	if jSerror != nil {
 		log.Printf("Error (%s) Not valid JSON: %s\n", remote, jSerror.Error())
 		return 1
@@ -276,21 +278,21 @@ func processRequest(req *[]byte, remote string) int {
 	if getConfigBool("debugMode") {
 		log.Println("JSON from client: ", remote)
 		log.Println("------- BEGIN Parsed JSON -------------")
-		log.Println(jsonmsg.toFormattedString())
+		log.Println(jsonmsg.JsonIndented())
 		log.Println("------- END Parsed JSON ---------------")
 	}
 
-	statuscheck,scType := jsonmsg.getStringByPath("statuscheck")
+	statuscheck, scType := jsonmsg.GetStringByPath("/statuscheck")
 	if scType != "none" && statuscheck == "isitalive" {
 		return 2
 	}
 
-	from, fromType := jsonmsg.getStringByPath("sendmail/from")
-	to, toType := jsonmsg.getStringByPath("sendmail/to")
-	subject, subjectType := jsonmsg.getStringByPath("sendmail/subject")
-	bodyhtml, bodyhtmlType := jsonmsg.getStringByPath("sendmail/bodyhtml")
-	subjectEnc := jsonmsg.getStringByPathWithDefault("sendmail/subjectEncoding", "none")
-	bodyhtmlEnc := jsonmsg.getStringByPathWithDefault("sendmail/bodyhtmlEncoding", "none")
+	from, fromType := jsonmsg.GetStringByPath("/sendmail/from")
+	to, toType := jsonmsg.GetStringByPath("/sendmail/to")
+	subject, subjectType := jsonmsg.GetStringByPath("/sendmail/subject")
+	bodyhtml, bodyhtmlType := jsonmsg.GetStringByPath("/sendmail/bodyhtml")
+	subjectEnc := jsonmsg.GetStringByPathWithDefault("/sendmail/subjectEncoding", "none")
+	bodyhtmlEnc := jsonmsg.GetStringByPathWithDefault("/sendmail/bodyhtmlEncoding", "none")
 
 	if fromType == "none" || toType == "none" ||
 		subjectType == "none" || bodyhtmlType == "none" {
