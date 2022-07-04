@@ -1,0 +1,11 @@
+{
+    "sendmail": {
+        "from": "testrestgomail@somewhere.com",
+        "to": "testmail@gmail.com",
+        "subject": "This is a test message with txt att",
+        "bodyhtml": "Probably I can say this thing is <strong>WORK'S</strong> with txt attachment",
+        "attachments": [
+            {"filename": "simple.txt", "content": "TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQsIGNvbnNlY3RldHVyIGFkaXBpc2NpbmcgZWxpdCwgc2VkIGRvIGVpdXNtb2QgdGVtcG9yIGluY2lkaWR1bnQgdXQgbGFib3JlIGV0IGRvbG9yZSBtYWduYSBhbGlxdWEu"}
+        ]
+    }
+}

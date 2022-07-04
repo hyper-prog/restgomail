@@ -1,0 +1,8 @@
+{
+    "sendmail": {
+        "from": "testrestgomail@somewhere.com",
+        "to": "testmail@gmail.com",
+        "subject": "This is a test message",
+        "bodyhtml": "Probably I can say this thing is <strong>WORK'S</strong> without attachment"
+    }
+}

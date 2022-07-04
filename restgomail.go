@@ -1,7 +1,7 @@
 package main
 
 /*  Rest-Go-Mail - HTTPS-REST capable (html) e-mail sender agent
-    (C) 2021 Péter Deák (hyper80@gmail.com)
+    (C) 2021-2022 Péter Deák (hyper80@gmail.com)
     License: GPLv2
 */
 
@@ -34,10 +34,11 @@ type configItemType struct {
 }
 
 type mailDataType struct {
-	from     string
-	to       string
-	subject  string
-	bodyhtml string
+	from        string
+	to          string
+	subject     string
+	bodyhtml    string
+	attachments map[string]string
 }
 
 var config map[string]*configItemType
@@ -328,7 +329,24 @@ func processRequest(req *[]byte, remote string) int {
 		log.Printf("Error (%s) not allowed sender address\n", remote)
 		return 1
 	}
-	senderChannel <- mailDataType{from, to, subject, bodyhtml}
+
+	attachments := make(map[string]string)
+	jsonattcount := jsonmsg.GetCountDescendantsByPath("/sendmail/attachments")
+	if getConfigBool("debugMode") {
+		log.Printf("Attachment count: %d\n", jsonattcount)
+	}
+	for i := 0; i < jsonattcount; i++ {
+		fn := jsonmsg.GetStringByPathWithDefault(fmt.Sprintf("/sendmail/attachments/[%d]/filename", i), "")
+		cnt := jsonmsg.GetStringByPathWithDefault(fmt.Sprintf("/sendmail/attachments/[%d]/content", i), "")
+		if fn != "" && cnt != "" {
+			if getConfigBool("debugMode") {
+				log.Printf("Attachment with name: %s\n", fn)
+			}
+			attachments[fn] = cnt
+		}
+	}
+
+	senderChannel <- mailDataType{from, to, subject, bodyhtml, attachments}
 	return 0
 }
 
@@ -344,19 +362,6 @@ func senderAgent(recvChannel <-chan mailDataType) {
 		}
 		time.Sleep(time.Second * time.Duration(getConfigFloat64("waitSecondsAfterSmtpReq")))
 	}
-}
-
-func smtpCreateRawBody(from, to, subject, body string) []byte {
-	return []byte("" +
-		"From: " + from + "\r\n" +
-		"To: " + to + "\r\n" +
-		"Subject: " + subject + "\r\n" +
-		"MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"utf-8\";\r\n\r\n" +
-		"<html>" +
-		"<head><title>" + subject + "</title></head>" +
-		"<body>" + body + "</body>" +
-		"</html>" +
-		"\r\n")
 }
 
 func sendmailNoAuth(mail mailDataType) {
@@ -377,9 +382,14 @@ func sendmailNoAuth(mail mailDataType) {
 	}
 	defer wc.Close()
 
-	message := smtpCreateRawBody(mail.from, mail.to, mail.subject, mail.bodyhtml)
+	message := InitMessage()
+	message.From = mail.from
+	message.To = mail.to
+	message.Subject = mail.subject
+	message.AddHtmlBody(mail.bodyhtml)
+	message.AddAttachmentsBase64(mail.attachments)
 
-	if _, err = wc.Write(message); err != nil {
+	if _, err = wc.Write(message.GetRawMessage()); err != nil {
 		log.Println("Error(13) :", err.Error())
 		return
 	}
@@ -391,10 +401,16 @@ func sendmailReqAuth(mail mailDataType) {
 		mail.to,
 	}
 
-	message := smtpCreateRawBody(mail.from, mail.to, mail.subject, mail.bodyhtml)
+	message := InitMessage()
+	message.From = mail.from
+	message.To = mail.to
+	message.Subject = mail.subject
+	message.AddHtmlBody(mail.bodyhtml)
+	message.AddAttachmentsBase64(mail.attachments)
+
 	auth := smtp.PlainAuth(getConfigString("smtpAuthIdentity"), mail.from, getConfigString("smtpAuthPassword"), getConfigString("smtpHost"))
 
-	err := smtp.SendMail(getConfigString("smtpHost")+":"+getConfigString("smtpPort"), auth, mail.from, toarray, message)
+	err := smtp.SendMail(getConfigString("smtpHost")+":"+getConfigString("smtpPort"), auth, mail.from, toarray, message.GetRawMessage())
 	if err != nil {
 		log.Println("Error(21) :", err.Error())
 		return

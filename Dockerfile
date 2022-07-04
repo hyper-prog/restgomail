@@ -4,11 +4,11 @@
 
 FROM golang AS restgomailbuildstage
 RUN mkdir /restgomail
-COPY restgomail.go /restgomail/
+COPY *.go /restgomail/
 ENV GO111MODULE=auto
 RUN cd /restgomail \
     && go get github.com/hyper-prog/smartjson \
-    && CGO_ENABLED=0 GOOS=linux go build -a -o restgomail restgomail.go
+    && CGO_ENABLED=0 GOOS=linux go build -a -o restgomail restgomail.go smtpassembler.go
 
 FROM alpine AS restgomail
 LABEL maintainer="hyper80@gmail.com" Description="RestGoMail - HTTPS REST-Go-MAIL (SMTP) gateway"
